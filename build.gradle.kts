@@ -5,6 +5,7 @@ plugins {
     id("fabric-loom") version "1.9-SNAPSHOT"
     id("maven-publish")
     id("org.jetbrains.kotlin.jvm") version "2.1.0"
+    id("co.uzzu.dotenv.gradle") version "4.0.0"
     java
 }
 
@@ -20,6 +21,7 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    maven { url = uri("https://maven.gurkz.me/releases") }
 }
 
 dependencies {
@@ -33,16 +35,18 @@ dependencies {
     include("me.lucko:fabric-permissions-api:${property("fabric_permissions_api_version")}")?.let { modImplementation(it) }
 }
 
-tasks {
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
 
+tasks {
     processResources {
 
         filesMatching("fabric.mod.json") {
             expand(getProperties())
-            expand(
-                mutableMapOf("version" to "TEST")
-            )
-            filter<ReplaceTokens>("tokens" to mapOf("supported_versions" to mcVersions.toString().split(";").joinToString("\",\"")))
+            filter<ReplaceTokens>("tokens" to mapOf("supported_versions" to mcVersions.toString().split(";").joinToString("\",\""), "version" to project.version))
         }
     }
 
@@ -53,6 +57,9 @@ tasks {
     publishing {
         publications {
             create<MavenPublication>("mavenJava") {
+                artifactId = property("archives_base_name")!!.toString()
+                groupId = property("maven_group")!!.toString()
+                version = version
                 artifact(remapJar) {
                     builtBy(remapJar)
                 }
@@ -65,7 +72,15 @@ tasks {
         // select the repositories you want to publish to
         repositories {
             // uncomment to publish to the local maven
-            // mavenLocal()
+            maven {
+                name = "gurkanMaven"
+                val repoHost = "https://maven.gurkz.me"
+                url = uri(if (version.toString().endsWith("SNAPSHOT")) "$repoHost/snapshots" else "$repoHost/releases")
+                credentials {
+                    username = env.fetch("MVN_USERNAME")
+                    password = env.fetch("MVN_TOKEN")
+                }
+            }
         }
     }
 }
@@ -81,5 +96,4 @@ java {
     // if it is present.
     // If you remove this line, sources will not be generated.
     withSourcesJar()
-
 }

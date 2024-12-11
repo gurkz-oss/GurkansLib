@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "gurkanslib",
-  "version": "${version}",
+  "version": "@version@",
 
   "name": "Gurkan's Lib",
   "description": "a library for Gurkan's mods",
